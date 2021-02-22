@@ -1,7 +1,7 @@
 import React from 'react'
 import arrayMove from 'array-move'
 
-import { withKnobs, number } from '@storybook/addon-knobs'
+import { withKnobs, number, button } from '@storybook/addon-knobs'
 import { action } from '@storybook/addon-actions'
 
 import SortableList, { SortableItem } from '../../index'
@@ -43,9 +43,16 @@ const useStyles = makeStyles({
 
 export const Demo = () => {
   const classes = useStyles()
-  const count = number('Items', 9, { min: 3, max: 12, range: true })
-
   const [items, setItems] = React.useState<string[]>([])
+
+  const count = number('Items', 9, { min: 3, max: 12, range: true })
+  button('Sort item list', () => {
+    const newList = arrayMove(items, items.length - 1, 0);
+    
+    setItems(newList);
+    action('calling sort')(`before: ${items}, after: ${newList}`)
+  });
+
   React.useEffect(() => {
     setItems(generateItems(count))
   }, [count])
@@ -61,8 +68,8 @@ export const Demo = () => {
       className={classes.list}
       draggedItemClassName={classes.dragged}
     >
-      {items.map((item) => (
-        <SortableItem key={item}>
+      {items.map((item, i) => (
+        <SortableItem key={item} index={i}>
           <div className={classes.item}>{item}</div>
         </SortableItem>
       ))}

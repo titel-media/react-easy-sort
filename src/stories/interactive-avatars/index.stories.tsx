@@ -100,8 +100,8 @@ export const Demo = () => {
       className={classes.root}
       draggedItemClassName={classes.dragged}
     >
-      {items.map(({ name, image }) => (
-        <SortableItem key={name}>
+      {items.map(({ name, image }, i) => (
+        <SortableItem key={name} index={i}>
           <div className={classes.item}>
             <Avatar
               className={classes.image}

@@ -58,8 +58,8 @@ export const Demo = () => {
       className={classes.list}
       draggedItemClassName={classes.dragged}
     >
-      {items.map((item) => (
-        <SortableItem key={item}>
+      {items.map((item, i) => (
+        <SortableItem key={item} index={i}>
           <div className={classes.item}>{item}</div>
         </SortableItem>
       ))}

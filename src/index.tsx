@@ -16,7 +16,7 @@ type Props = HTMLAttributes<HTMLDivElement> & {
 // this context is only used so that SortableItems can register/remove themselves
 // from the items list
 type Context = {
-  registerItem: (item: HTMLDivElement) => void
+  registerItem: ({item, index}: {item: HTMLDivElement, index: number}) => void
   removeItem: (item: HTMLDivElement) => void
 }
 
@@ -202,8 +202,16 @@ const SortableList = ({ children, onSortEnd, draggedItemClassName, ...rest }: Pr
     },
   })
 
-  const registerItem = React.useCallback((item: HTMLDivElement) => {
-    itemsRef.current.push(item)
+  const registerItem = React.useCallback(({ item, index }: { item: HTMLDivElement, index: number }) => {
+    const existingIndex = itemsRef.current.indexOf(item)
+
+    if (existingIndex === -1) {
+      itemsRef.current.push(item)
+    } 
+    
+    if (existingIndex !== index) {
+      arrayMove(itemsRef.current, existingIndex, index)
+    }
   }, [])
 
   const removeItem = React.useCallback((item: HTMLDivElement) => {
@@ -227,13 +235,14 @@ const SortableList = ({ children, onSortEnd, draggedItemClassName, ...rest }: Pr
 export default SortableList
 
 type ItemProps = {
-  children: React.ReactElement
+  children: React.ReactElement,
+  index: number
 }
 
 /**
  * SortableItem only adds a ref to its children so that we can register it to the main Sortable
  */
-export const SortableItem = ({ children }: ItemProps) => {
+export const SortableItem = ({ children, index }: ItemProps) => {
   const context = React.useContext(SortableListContext)
   if (!context) {
     throw new Error('SortableItem must be a child of SortableList')
@@ -244,7 +253,7 @@ export const SortableItem = ({ children }: ItemProps) => {
   React.useEffect(() => {
     const currentItem = elementRef.current
     if (currentItem) {
-      registerItem(currentItem)
+      registerItem({ item: currentItem, index })
     }
 
     return () => {
@@ -252,7 +261,7 @@ export const SortableItem = ({ children }: ItemProps) => {
         removeItem(currentItem)
       }
     }
-  }, [registerItem, removeItem])
+  })
 
   return React.cloneElement(children, { ref: elementRef })
 }
