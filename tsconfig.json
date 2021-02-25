@@ -8,6 +8,7 @@
     "esModuleInterop": true,
     "sourceMap": true,
     "declarationMap": true,
-    "importHelpers": true
+    "importHelpers": true,
+    "noUnusedLocals": false
   }
 }

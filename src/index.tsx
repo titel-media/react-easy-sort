@@ -2,6 +2,7 @@ import arrayMove from 'array-move'
 import React, { HTMLAttributes } from 'react'
 
 import { findItemIndexAtPosition } from './helpers'
+import AutoScroller from './autoScroller'
 import { useDrag } from './hooks'
 import { Point } from './types'
 
@@ -36,7 +37,25 @@ const SortableList = ({ children, onSortEnd, draggedItemClassName, ...rest }: Pr
   // contains the index in the itemsRef of the element to be exchanged with the source item
   const lastTargetIndexRef = React.useRef<number | undefined>(undefined)
 
+  const [autoScroller, setAutoScroller] = React.useState<AutoScroller | null>(null)
+  const [initialWindowScroll, setInitialWindowScroll] = React.useState<{
+    x: number
+    y: number
+  } | null>(null)
+
+  const updateTargetPosition = (position: Point) => {
+    if (targetRef.current) {
+      // we use `translate3d` to force using the GPU if available
+      targetRef.current.style.transform = `translate(-50%, -50%) translate3d(${position.x}px, ${position.y}px, 0px)`
+    }
+  }
+
   React.useEffect(() => {
+    // uses window as the scroll container
+    const scrollContainer = document.scrollingElement || document.documentElement
+    const scroller = new AutoScroller(scrollContainer, updateTargetPosition)
+    setAutoScroller(scroller)
+
     return () => {
       // cleanup the target element from the DOM when SortableList in unmounted
       if (targetRef.current) {
@@ -45,10 +64,23 @@ const SortableList = ({ children, onSortEnd, draggedItemClassName, ...rest }: Pr
     }
   }, [])
 
-  const updateTargetPosition = (position: Point) => {
-    if (targetRef.current) {
-      // we use `translate3d` to force using the GPU if available
-      targetRef.current.style.transform = `translate(-50%, -50%) translate3d(${position.x}px, ${position.y}px, 0px)`
+  const getTranslatePosition = (position: Point) => ({
+    x: position.x - window.pageXOffset,
+    y: position.y - window.pageYOffset,
+  })
+
+  const autoscroll = (position: Point) => {
+    if (autoScroller && targetRef.current) {
+      autoScroller.update({
+        height: targetRef.current.offsetHeight,
+        maxTranslate: {
+          x: document.defaultView.innerWidth,
+          y: document.defaultView.innerHeight,
+        },
+        minTranslate: { x: 0, y: 0 },
+        translate: position,
+        width: targetRef.current.offsetWidth,
+      })
     }
   }
 
@@ -100,12 +132,17 @@ const SortableList = ({ children, onSortEnd, draggedItemClassName, ...rest }: Pr
         return
       }
 
+      // setInitialWindowScroll({ x: window.pageXOffset, y: window.pageYOffset });
+
       // saving the index of the item being dragged
       sourceIndexRef.current = sourceIndex
 
+      const position = getTranslatePosition(point)
+
       // the item being dragged is copied to the document body and will be used as the target
       copyItem(sourceIndex)
-      updateTargetPosition(point)
+      updateTargetPosition(position)
+      autoscroll(position)
 
       // hide source during the drag gesture
       const source = itemsRef.current[sourceIndex]
@@ -118,7 +155,9 @@ const SortableList = ({ children, onSortEnd, draggedItemClassName, ...rest }: Pr
       }
     },
     onMove: ({ point, pointInWindow }) => {
-      updateTargetPosition(point)
+      const position = getTranslatePosition(point)
+      updateTargetPosition(position)
+      autoscroll(position)
 
       const sourceIndex = sourceIndexRef.current
       // if there is no source, we exit early (happened when drag gesture was started outside a SortableItem)
@@ -171,6 +210,8 @@ const SortableList = ({ children, onSortEnd, draggedItemClassName, ...rest }: Pr
         currentItem.style.transform = ''
         currentItem.style.transitionDuration = ''
       }
+
+      autoScroller.clear()
 
       const sourceIndex = sourceIndexRef.current
       if (sourceIndex !== undefined) {
